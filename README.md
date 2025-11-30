@@ -46,7 +46,7 @@ gunicorn -w 4 -b 0.0.0.0:8081 app.main:app
 - GCP account with billing enabled (free tier credits)
 - `gcloud` CLI installed: https://cloud.google.com/sdk/docs/install
 
-**Quick Deploy:**
+**Quick Deploy (Optimized for Hobby Projects):**
 
 ```bash
 # 1. Install gcloud CLI: https://cloud.google.com/sdk/docs/install
@@ -54,30 +54,37 @@ gunicorn -w 4 -b 0.0.0.0:8081 app.main:app
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 
-# 3. Deploy (uses deploy-gcp.sh script)
-chmod +x deploy-gcp.sh
-./deploy-gcp.sh
-
-# 4. Set environment variables
-gcloud run services update ai-service \
-  --update-env-vars "HARDCODED_API_KEY=your-key,GEMINI_API_KEY=your-gemini-key"
-```
-
-**Manual Deploy:**
-```bash
+# 3. Deploy (minimal resources, scales to zero)
 gcloud run deploy ai-service \
   --source . \
   --region us-central1 \
   --platform managed \
   --allow-unauthenticated \
-  --set-env-vars "HARDCODED_API_KEY=your-key,GEMINI_API_KEY=your-key,ENABLE_SECURITY_SERVICE=false,DEFAULT_PROVIDER=gemini"
+  --memory 256Mi \
+  --cpu 1 \
+  --min-instances 0 \
+  --max-instances 1 \
+  --concurrency 10 \
+  --set-env-vars "ENABLE_SECURITY_SERVICE=false,DEFAULT_PROVIDER=gemini,FLASK_ENV=production"
+
+# 4. Set environment variables
+gcloud run services update ai-service \
+  --update-env-vars "HARDCODED_API_KEY=your-key,GEMINI_API_KEY=your-gemini-key" \
+  --region us-central1
 ```
 
-**Free Tier Limits:**
-- 2 million requests/month
-- 360,000 GB-seconds memory
-- 180,000 vCPU-seconds
-- 1 GB egress/day
+**Free Tier (Perfect for Hobby Projects):**
+- ✅ **2 million requests/month** - Free
+- ✅ **360,000 GB-seconds memory** - Free (256Mi × ~1400 hours)
+- ✅ **180,000 vCPU-seconds** - Free (1 CPU × ~50 hours)
+- ✅ **1 GB egress/day** - Free
+- ✅ **Scales to zero** - No cost when idle
+- ✅ **First $300 credit** - Free for new accounts
+
+**Cost Estimate (After Free Tier):**
+- ~$0.00/month for light usage (< 2M requests)
+- ~$0.40 per million requests (if exceeded)
+- Memory/CPU: Included in request pricing
 
 ### Docker
 

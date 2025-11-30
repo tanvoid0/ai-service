@@ -24,17 +24,19 @@ echo "📦 Project: $PROJECT_ID"
 echo "🔧 Enabling required APIs..."
 gcloud services enable cloudbuild.googleapis.com run.googleapis.com secretmanager.googleapis.com --quiet
 
-# Deploy to Cloud Run
+# Deploy to Cloud Run (optimized for hobby projects - minimal cost)
 echo "🏗️  Building and deploying..."
 gcloud run deploy ai-service \
   --source . \
   --region us-central1 \
   --platform managed \
   --allow-unauthenticated \
-  --memory 512Mi \
+  --memory 256Mi \
   --cpu 1 \
   --timeout 300 \
-  --max-instances 10 \
+  --min-instances 0 \
+  --max-instances 1 \
+  --concurrency 10 \
   --set-env-vars "ENABLE_SECURITY_SERVICE=false,DEFAULT_PROVIDER=gemini,FLASK_ENV=production" \
   --quiet
 

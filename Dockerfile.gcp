@@ -38,6 +38,6 @@ EXPOSE 8080
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Run with gunicorn
-CMD exec gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 app.main:app
+# Run with gunicorn (single worker for minimal resource usage)
+CMD exec gunicorn -w 1 -b 0.0.0.0:$PORT --timeout 120 --threads 2 app.main:app
 
