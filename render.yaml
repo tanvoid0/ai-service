@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: ai-service
+    env: python
+    buildCommand: |
+      pip install -r requirements.txt && 
+      cd frontend && npm install && npm run build && cd ..
+    startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT --timeout 120 app.main:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: ENABLE_SECURITY_SERVICE
+        value: false
+      - key: ENABLE_ANONYMOUS_ACCESS
+        value: false
+      - key: DEFAULT_PROVIDER
+        value: gemini
+      # Required: Set HARDCODED_API_KEY in Render.com dashboard (Environment tab)
+      # Required: Set GEMINI_API_KEY in Render.com dashboard (Environment tab)
+      # Optional: Set OLLAMA_BASE_URL if using Ollama provider
+      # Optional: Set DATABASE_URL if using database features
+

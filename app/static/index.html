@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Service - Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Auth Container (shown when not logged in) */
+        .auth-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .auth-container.hidden {
+            display: none;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .version-badge {
+            font-size: 0.5em;
+            font-weight: 400;
+            background: #f0f0f0;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+            color: #666;
+        }
+
+        .auth-header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .status-btn.checking {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .status-indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-indicator-dot.connected {
+            background: #4CAF50;
+            box-shadow: 0 0 8px #4CAF50;
+        }
+
+        .status-indicator-dot.disconnected {
+            background: #f44336;
+            box-shadow: 0 0 8px #f44336;
+        }
+
+        .status-indicator-dot.checking {
+            background: #ff9800;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Main App Container (shown when logged in) */
+        .app-container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: none;
+        }
+
+        .app-container.active {
+            display: block;
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            position: relative;
+        }
+
+        .app-header-content {
+            text-align: center;
+        }
+
+        .app-header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .app-header .version-badge {
+            font-size: 0.4em;
+            font-weight: 400;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            opacity: 0.8;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .app-header p {
+            opacity: 0.9;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-email {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .prompt-section {
+            margin-bottom: 30px;
+        }
+
+        .prompt-section textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .prompt-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn-secondary-action {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-secondary-action:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .response-section {
+            margin-top: 30px;
+        }
+
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .response-header h3 {
+            color: #333;
+        }
+
+        .clear-btn {
+            padding: 8px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .clear-btn:hover {
+            background: #d32f2f;
+        }
+
+        .response-box {
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .response-box.empty {
+            color: #999;
+            font-style: italic;
+        }
+
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            color: #1565c0;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Container (shown when not logged in) -->
+    <div class="auth-container" id="auth-container">
+        <button class="status-btn" onclick="checkSecurityServiceStatus()" title="Check Security Service Connection">
+            <span class="status-indicator-dot disconnected status-dot"></span>
+            <span class="status-text">Check Status</span>
+        </button>
+        <div class="auth-header">
+            <h1>
+                🤖 AI Service Chat
+                <span class="version-badge" id="version-badge">v1.1.2</span>
+            </h1>
+            <p class="subtitle">Interact with multiple AI providers and models</p>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('register')">Register</button>
+            <button class="tab" onclick="switchTab('login')">Login</button>
+        </div>
+
+        <!-- Register Tab -->
+        <div id="register-tab" class="tab-content active">
+            <form id="register-form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="reg-username">Username *</label>
+                    <input type="text" id="reg-username" name="username" required minlength="3" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Email *</label>
+                    <input type="email" id="reg-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Password *</label>
+                    <input type="password" id="reg-password" name="password" required minlength="8">
+                </div>
+                <div class="form-group">
+                    <label for="reg-firstname">First Name</label>
+                    <input type="text" id="reg-firstname" name="firstName">
+                </div>
+                <div class="form-group">
+                    <label for="reg-lastname">Last Name</label>
+                    <input type="text" id="reg-lastname" name="lastName">
+                </div>
+                <button type="submit" id="register-btn">Register</button>
+            </form>
+        </div>
+
+        <!-- Login Tab -->
+        <div id="login-tab" class="tab-content">
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-username">Username *</label>
+                    <input type="text" id="login-username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password *</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit" id="login-btn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container (shown when logged in) -->
+    <div class="app-container" id="app-container">
+        <div class="app-header">
+            <div class="user-info">
+                <button class="status-btn" onclick="checkSecurityServiceStatus()" title="Check Security Service Connection">
+                    <span class="status-indicator-dot disconnected status-dot"></span>
+                    <span class="status-text">Check Status</span>
+                </button>
+                <div class="user-details">
+                    <div class="user-name" id="user-name"></div>
+                    <div class="user-email" id="user-email"></div>
+                </div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+            <div class="app-header-content">
+                <h1>
+                    🤖 AI Service Chat
+                    <span class="version-badge" id="version-badge-app">v1.1.2</span>
+                </h1>
+                <p>Interact with multiple AI providers and models</p>
+            </div>
+        </div>
+
+        <div class="content">
+            <div id="error-message" class="error" style="display: none;"></div>
+            <div id="info-message" class="info" style="display: none;"></div>
+
+            <div class="controls">
+                <div class="form-group">
+                    <label for="provider-select">Provider</label>
+                    <select id="provider-select">
+                        <option value="">Loading providers...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="model-select">Model</label>
+                    <select id="model-select">
+                        <option value="">Select a provider first</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="prompt-section">
+                <label for="prompt-input" style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">
+                    Your Prompt
+                </label>
+                <textarea id="prompt-input" placeholder="Enter your question or prompt here..."></textarea>
+            </div>
+
+            <div class="buttons">
+                <button class="btn btn-primary" id="send-btn" onclick="sendMessage(false)">
+                    Send (Non-Streaming)
+                </button>
+                <button class="btn btn-secondary-action" id="stream-btn" onclick="sendMessage(true)">
+                    Send (Streaming)
+                </button>
+            </div>
+
+            <div class="response-section">
+                <div class="response-header">
+                    <h3>
+                        Response
+                        <span id="status-indicator" class="status" style="display: none;"></span>
+                    </h3>
+                    <button class="clear-btn" onclick="clearResponse()">Clear</button>
+                </div>
+                <div id="response-box" class="response-box empty">
+                    Your response will appear here...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let SECURITY_SERVICE_URL = '';
+        let APPLICATION_ID = '';
+        let currentAbortController = null;
+        let currentUser = null;
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadConfig();
+            checkAuth();
+            checkSecurityServiceStatus();
+        });
+
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/api/config`);
+                const config = await response.json();
+                SECURITY_SERVICE_URL = config.securityServiceUrl;
+                APPLICATION_ID = config.applicationId;
+                
+                // Update version badges if version is provided in config
+                if (config.version) {
+                    const versionBadges = document.querySelectorAll('.version-badge, #version-badge-app');
+                    versionBadges.forEach(badge => {
+                        if (badge) badge.textContent = `v${config.version}`;
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load config:', error);
+                showMessage('Failed to load configuration', 'error');
+            }
+        }
+
+        function switchTab(tabName) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'register') {
+                document.querySelector('.tab:first-child').classList.add('active');
+                document.getElementById('register-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab:last-child').classList.add('active');
+                document.getElementById('login-tab').classList.add('active');
+            }
+            
+            hideMessage();
+        }
+
+        function showMessage(text, type = 'success') {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        function hideMessage() {
+            const messageEl = document.getElementById('message');
+            messageEl.className = 'message';
+        }
+
+        function setLoading(buttonId, isLoading) {
+            const btn = document.getElementById(buttonId);
+            if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = btn.textContent + '<span class="loading"></span>';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btn.textContent.replace('<span class="loading"></span>', '');
+            }
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem('ai_service_token');
+            if (token) {
+                verifyToken(token);
+            } else {
+                showAuthContainer();
+            }
+        }
+
+        async function verifyToken(token) {
+            try {
+                const response = await fetch(`${SECURITY_SERVICE_URL}/api/v1/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Token verification failed:', response.status, errorText);
+                    throw new Error(`Token verification failed: ${response.status} ${response.statusText}`);
+                }
+
+                const user = await response.json();
+                console.log('User data received:', user);
+                
+                if (!user || !user.username) {
+                    console.error('Invalid user data:', user);
+                    throw new Error('Invalid user data received');
+                }
+                
+                currentUser = user;
+                setAuthToken(token);
+                showAppContainer(user);
+                // Pass token directly to avoid timing issues
+                loadProviders(token);
+            } catch (error) {
+                console.error('Token verification failed:', error);
+                localStorage.removeItem('ai_service_token');
+                showAuthContainer();
+                throw error; // Re-throw so caller can handle it
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            setLoading('login-btn', true);
+            hideMessage();
+
+            const formData = {
+                username: document.getElementById('login-username').value,
+                password: document.getElementById('login-password').value,
+                client_id: APPLICATION_ID,
+                auth_mode: 'jwt'
+            };
+
+            try {
+                const response = await fetch(`${SECURITY_SERVICE_URL}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                // Check if response is ok before parsing JSON
+                if (!response.ok) {
+                    let errorMessage = 'Login failed';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorData.error || `Login failed: ${response.statusText}`;
+                    } catch (e) {
+                        errorMessage = `Login failed: ${response.status} ${response.statusText}`;
+                    }
+                    showMessage(errorMessage, 'error');
+                    setLoading('login-btn', false);
+                    return;
+                }
+
+                const data = await response.json();
+                
+                // Verify we got a token
+                if (!data.token) {
+                    showMessage('Login failed: No token received', 'error');
+                    setLoading('login-btn', false);
+                    return;
+                }
+
+                const token = data.token;
+                setAuthToken(token);
+                
+                // Verify token and show success only after verification
+                try {
+                    await verifyToken(token);
+                    showMessage('Login successful!', 'success');
+                } catch (error) {
+                    showMessage('Login failed: Token verification failed', 'error');
+                    localStorage.removeItem('ai_service_token');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('Error: ' + (error.message || 'Failed to connect to authentication service'), 'error');
+            } finally {
+                setLoading('login-btn', false);
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            setLoading('register-btn', true);
+            hideMessage();
+
+            const formData = {
+                username: document.getElementById('reg-username').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value,
+                first_name: document.getElementById('reg-firstname').value || null,
+                last_name: document.getElementById('reg-lastname').value || null
+            };
+
+            try {
+                const response = await fetch(`${SECURITY_SERVICE_URL}/api/v1/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage(`Registration successful! Welcome ${data.username}`, 'success');
+                    document.getElementById('register-form').reset();
+                    setTimeout(() => switchTab('login'), 1500);
+                } else {
+                    showMessage(data.message || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            } finally {
+                setLoading('register-btn', false);
+            }
+        }
+
+        async function logout() {
+            const token = localStorage.getItem('ai_service_token');
+            
+            try {
+                await fetch(`${SECURITY_SERVICE_URL}/api/v1/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+
+            localStorage.removeItem('ai_service_token');
+            currentUser = null;
+            showAuthContainer();
+        }
+
+        function setAuthToken(token) {
+            localStorage.setItem('ai_service_token', token);
+        }
+
+        function getAuthToken() {
+            const token = localStorage.getItem('ai_service_token');
+            return token ? `Bearer ${token}` : '';
+        }
+
+        function showAppContainer(user) {
+            console.log('Showing app container for user:', user);
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('app-container').classList.add('active');
+            
+            const userNameEl = document.getElementById('user-name');
+            const userEmailEl = document.getElementById('user-email');
+            
+            if (userNameEl) {
+                userNameEl.textContent = user.username || 'User';
+                console.log('Set user name to:', user.username);
+            } else {
+                console.error('user-name element not found');
+            }
+            
+            if (userEmailEl) {
+                userEmailEl.textContent = user.email || '';
+                console.log('Set user email to:', user.email);
+            } else {
+                console.error('user-email element not found');
+            }
+        }
+
+        function showAuthContainer() {
+            document.getElementById('auth-container').classList.remove('hidden');
+            document.getElementById('app-container').classList.remove('active');
+        }
+
+        async function loadProviders(providedToken = null) {
+            try {
+                // Use provided token or get from storage
+                const token = providedToken ? `Bearer ${providedToken}` : getAuthToken();
+                if (!token) {
+                    console.error('No token available for loadProviders');
+                    localStorage.removeItem('ai_service_token');
+                    showAuthContainer();
+                    throw new Error('Authentication required. Please login.');
+                }
+
+                showInfo('Loading providers and models...');
+                const response = await fetch(`${API_BASE}/api/v1/models`, {
+                    headers: {
+                        'Authorization': token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        console.error('401 Unauthorized - token may be invalid or expired');
+                        localStorage.removeItem('ai_service_token');
+                        showAuthContainer();
+                        throw new Error('Authentication required. Please login.');
+                    }
+                    const errorText = await response.text();
+                    console.error('Failed to load models:', response.status, errorText);
+                    throw new Error(`Failed to load models: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                const providerSelect = document.getElementById('provider-select');
+                providerSelect.innerHTML = '<option value="">Select a provider</option>';
+
+                if (data.providers && data.providers.length > 0) {
+                    data.providers.forEach(provider => {
+                        const option = document.createElement('option');
+                        option.value = provider.provider;
+                        option.textContent = `${provider.provider} (${provider.models.length} models)`;
+                        providerSelect.appendChild(option);
+                    });
+
+                    if (data.providers.length > 0) {
+                        loadModelsForProvider(data.providers[0].provider, data.providers);
+                    }
+                } else {
+                    throw new Error('No providers available');
+                }
+
+                providerSelect.addEventListener('change', (e) => {
+                    const provider = e.target.value;
+                    if (provider) {
+                        loadModelsForProvider(provider, data.providers);
+                    }
+                });
+
+                hideInfo();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function loadModelsForProvider(providerName, providersData) {
+            const provider = providersData.find(p => p.provider === providerName);
+            const modelSelect = document.getElementById('model-select');
+            
+            if (provider && provider.models) {
+                modelSelect.innerHTML = '';
+                provider.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    if (model === provider.default) {
+                        option.selected = true;
+                    }
+                    modelSelect.appendChild(option);
+                });
+            }
+        }
+
+        async function sendMessage(stream = false) {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            const provider = document.getElementById('provider-select').value;
+            const model = document.getElementById('model-select').value;
+
+            if (!prompt) {
+                showError('Please enter a prompt');
+                return;
+            }
+
+            if (!provider || !model) {
+                showError('Please select a provider and model');
+                return;
+            }
+
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+
+            currentAbortController = new AbortController();
+            setSendButtonsLoading(true);
+
+            const responseBox = document.getElementById('response-box');
+            responseBox.textContent = '';
+            responseBox.classList.remove('empty');
+
+            try {
+                if (stream) {
+                    await sendStreamingRequest(prompt, provider, model);
+                } else {
+                    await sendNonStreamingRequest(prompt, provider, model);
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    if (error.message.includes('401') || error.message.includes('Authentication')) {
+                        localStorage.removeItem('ai_service_token');
+                        showAuthContainer();
+                    }
+                    showError(error.message);
+                    setStatus('error', 'Error');
+                } else {
+                    // Request was aborted, clear the loading status
+                    setStatus('', '');
+                }
+            } finally {
+                setSendButtonsLoading(false);
+                currentAbortController = null;
+            }
+        }
+
+        async function sendNonStreamingRequest(prompt, provider, model) {
+            const response = await fetch(`${API_BASE}/api/v1/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': getAuthToken()
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    provider: provider,
+                    model: model
+                }),
+                signal: currentAbortController.signal
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Request failed: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const responseBox = document.getElementById('response-box');
+            responseBox.textContent = data.response || 'No response received';
+            setStatus('success', 'Complete');
+        }
+
+        async function sendStreamingRequest(prompt, provider, model) {
+            const response = await fetch(`${API_BASE}/api/v1/chat/stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': getAuthToken()
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    provider: provider,
+                    model: model
+                }),
+                signal: currentAbortController.signal
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Request failed: ${response.statusText}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            const responseBox = document.getElementById('response-box');
+            let fullText = '';
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        // Stream ended, set success status if not already set
+                        setStatus('success', 'Complete');
+                        break;
+                    }
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                
+                                if (data.type === 'chunk') {
+                                    fullText += data.content;
+                                    responseBox.textContent = fullText;
+                                } else if (data.type === 'done') {
+                                    setStatus('success', 'Complete');
+                                    return;
+                                } else if (data.type === 'error') {
+                                    throw new Error(data.message || 'Streaming error');
+                                }
+                            } catch (e) {
+                                // Skip invalid JSON lines
+                            }
+                        }
+                    }
+                }
+            } finally {
+                reader.releaseLock();
+            }
+        }
+
+        function clearResponse() {
+            const responseBox = document.getElementById('response-box');
+            responseBox.textContent = '';
+            responseBox.classList.add('empty');
+            responseBox.textContent = 'Your response will appear here...';
+            setStatus('', '');
+        }
+
+        function setSendButtonsLoading(loading) {
+            const sendBtn = document.getElementById('send-btn');
+            const streamBtn = document.getElementById('stream-btn');
+            
+            if (!sendBtn || !streamBtn) {
+                console.error('Send buttons not found');
+                return;
+            }
+            
+            sendBtn.disabled = loading;
+            streamBtn.disabled = loading;
+
+            if (loading) {
+                setStatus('loading', 'Loading...');
+            }
+        }
+
+        function setStatus(type, text) {
+            const statusIndicator = document.getElementById('status-indicator');
+            statusIndicator.className = `status ${type}`;
+            statusIndicator.textContent = text;
+            statusIndicator.style.display = text ? 'inline-block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showInfo(message) {
+            const infoDiv = document.getElementById('info-message');
+            infoDiv.textContent = message;
+            infoDiv.style.display = 'block';
+        }
+
+        function hideInfo() {
+            const infoDiv = document.getElementById('info-message');
+            infoDiv.style.display = 'none';
+        }
+
+        async function checkSecurityServiceStatus() {
+            const statusButtons = document.querySelectorAll('.status-btn');
+            const statusDots = document.querySelectorAll('.status-dot');
+            const statusTexts = document.querySelectorAll('.status-text');
+            
+            if (statusButtons.length === 0 || statusDots.length === 0 || statusTexts.length === 0) return;
+            
+            const updateAll = (dotClass, text, title) => {
+                statusDots.forEach(dot => {
+                    dot.className = `status-indicator-dot ${dotClass}`;
+                });
+                statusTexts.forEach(textEl => {
+                    textEl.textContent = text;
+                });
+                statusButtons.forEach(btn => {
+                    btn.title = title;
+                    btn.classList.remove('checking');
+                });
+            };
+            
+            statusButtons.forEach(btn => btn.classList.add('checking'));
+            statusDots.forEach(dot => dot.className = 'status-indicator-dot checking');
+            statusTexts.forEach(textEl => textEl.textContent = 'Checking...');
+            
+            try {
+                const securityUrl = SECURITY_SERVICE_URL || 'http://localhost:8080';
+                
+                // Use actual token if logged in, otherwise use health check endpoint
+                const token = localStorage.getItem('ai_service_token');
+                
+                // Try to use the /api/v1/auth/me endpoint if we have a token, otherwise use health check
+                let testUrl;
+                let useAuth = false;
+                
+                if (token) {
+                    // If we have a token, check the /me endpoint which is simpler
+                    testUrl = `${securityUrl}/api/v1/auth/me`;
+                    useAuth = true;
+                } else {
+                    // Otherwise, use the health check endpoint for connectivity testing
+                    testUrl = `${securityUrl}/q/health`;
+                }
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const headers = {
+                    'Accept': 'application/json'
+                };
+                
+                if (useAuth && token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                const response = await fetch(testUrl, {
+                    method: 'GET',
+                    signal: controller.signal,
+                    headers: headers
+                });
+                
+                clearTimeout(timeoutId);
+                
+                // If we get any response, the service is reachable (even errors mean the service is up)
+                if (response.status >= 200 && response.status < 500) {
+                    updateAll('connected', 'Connected', 'Security Service: Connected ✓');
+                } else if (response.status === 401 && token) {
+                    // Token might be invalid, but service is reachable
+                    updateAll('connected', 'Connected', 'Security Service: Connected (token may be expired)');
+                } else if (response.status === 404 || response.status === 400) {
+                    // Endpoint not found or bad request (e.g., application not registered), but service is reachable
+                    updateAll('connected', 'Connected', 'Security Service: Connected (application may need registration)');
+                } else {
+                    // Any other response means service is reachable
+                    updateAll('connected', 'Connected', 'Security Service: Connected ✓');
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    updateAll('disconnected', 'Timeout', 'Security Service: Connection timeout');
+                } else if (error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED') || error.message.includes('NetworkError')) {
+                    updateAll('disconnected', 'Disconnected', 'Security Service: Cannot connect - check if service is running and accessible');
+                } else {
+                    // Even if we get an error response, the service is reachable
+                    updateAll('connected', 'Connected', 'Security Service: Connected (endpoint may require auth)');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

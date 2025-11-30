@@ -1,0 +1,18 @@
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-service:latest
+    container_name: ai-service
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+

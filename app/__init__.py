@@ -1,0 +1,4 @@
+"""
+AI Microservice Flask Application
+"""
+
