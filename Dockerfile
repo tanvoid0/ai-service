@@ -34,6 +34,10 @@ WORKDIR /app
 # Ensure the built React app is in place
 RUN ls -la app/static/ || echo "Static directory check"
 
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 # Expose port
 EXPOSE 8081
 

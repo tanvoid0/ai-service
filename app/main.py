@@ -14,8 +14,20 @@ def create_app():
     """Create and configure Flask application"""
     app = Flask(__name__, static_folder='static', static_url_path='/static')
     
-    # Enable CORS
-    CORS(app)
+    # Configure CORS securely
+    # In production, restrict to specific origins
+    cors_origins = os.getenv("CORS_ORIGINS", "*").split(",") if config.FLASK_ENV == "production" else "*"
+    CORS(app, origins=cors_origins, supports_credentials=False)
+    
+    # Add security headers
+    @app.after_request
+    def set_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['Content-Security-Policy'] = "default-src 'self'"
+        return response
     
     # Register blueprints
     app.register_blueprint(chat_bp, url_prefix="/api/v1")
@@ -104,10 +116,13 @@ def create_app():
             "version": "2.2.0"
         })
     
-    # Diagnostic endpoint to test security service connection
+    # Diagnostic endpoint - ONLY available in development mode
     @app.route("/api/debug/security")
     def debug_security():
-        """Debug endpoint to test security service connectivity"""
+        """Debug endpoint to test security service connectivity - DISABLED in production"""
+        if config.FLASK_ENV == "production":
+            return jsonify({"error": "Not found"}), 404
+        
         from app.services.security_client import security_client
         import requests
         import logging

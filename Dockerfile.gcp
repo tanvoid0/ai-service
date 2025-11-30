@@ -34,6 +34,10 @@ WORKDIR /app
 # Expose port (Cloud Run uses PORT env var)
 EXPOSE 8080
 
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 # Run with gunicorn
 CMD exec gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 app.main:app
 

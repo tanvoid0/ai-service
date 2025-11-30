@@ -54,7 +54,7 @@ class Config:
     # Flask Configuration
     # Render.com uses PORT environment variable, fallback to FLASK_PORT
     FLASK_PORT: int = int(os.getenv("PORT") or os.getenv("FLASK_PORT", "8081"))
-    FLASK_ENV: str = os.getenv("FLASK_ENV", "development")
+    FLASK_ENV: str = os.getenv("FLASK_ENV", "production")  # Default to production for security
     
     # Default Provider
     DEFAULT_PROVIDER: str = os.getenv("DEFAULT_PROVIDER", "ollama")
