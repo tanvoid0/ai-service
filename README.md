@@ -40,15 +40,44 @@ gunicorn -w 4 -b 0.0.0.0:8081 app.main:app
 
 ## Deployment
 
-### Render.com
+### Google Cloud Platform (Free Tier)
 
-1. Connect your Git repository
-2. Set environment variables in Render dashboard:
-   - `HARDCODED_API_KEY` (required)
-   - `GEMINI_API_KEY` (required for Gemini)
-   - `ENABLE_SECURITY_SERVICE=false`
-   - `DEFAULT_PROVIDER=gemini`
-3. Deploy (uses `render.yaml`)
+**Prerequisites:**
+- GCP account with billing enabled (free tier credits)
+- `gcloud` CLI installed: https://cloud.google.com/sdk/docs/install
+
+**Quick Deploy:**
+
+```bash
+# 1. Install gcloud CLI: https://cloud.google.com/sdk/docs/install
+# 2. Login and set project
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# 3. Deploy (uses deploy-gcp.sh script)
+chmod +x deploy-gcp.sh
+./deploy-gcp.sh
+
+# 4. Set environment variables
+gcloud run services update ai-service \
+  --update-env-vars "HARDCODED_API_KEY=your-key,GEMINI_API_KEY=your-gemini-key"
+```
+
+**Manual Deploy:**
+```bash
+gcloud run deploy ai-service \
+  --source . \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars "HARDCODED_API_KEY=your-key,GEMINI_API_KEY=your-key,ENABLE_SECURITY_SERVICE=false,DEFAULT_PROVIDER=gemini"
+```
+
+**Free Tier Limits:**
+- 2 million requests/month
+- 360,000 GB-seconds memory
+- 180,000 vCPU-seconds
+- 1 GB egress/day
 
 ### Docker
 
